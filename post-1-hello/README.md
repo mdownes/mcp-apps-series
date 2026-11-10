@@ -2,43 +2,18 @@
 
 The smallest MCP App that works: one tool (`hello`), one `ui://` resource, and a Lit view that renders `structuredContent`.
 
-There is no host in this folder. You test the view with the official basic-host from [ext-apps](https://github.com/modelcontextprotocol/ext-apps).
-
-## Run the server
+## Run it
 
 ```bash
+git clone https://github.com/mdownes/mcp-apps-series.git
+cd mcp-apps-series/post-1-hello
 npm install
-npm run build
 npm start
 ```
 
-The MCP server listens at **http://localhost:3001/mcp**. Leave this terminal running.
+Open **http://localhost:8080**. `npm install` also installs the shared test host in [`../host`](../host). `npm start` builds this view and that host, then starts the MCP server (http://localhost:3001/mcp) and the host together. The terminal prints the URL to open. The host calls `hello` on load, so the sandboxed view shows **Hello, world!**. Press **Call** to run it again. To greet someone else, set Arguments to `{"name":"Ada"}` and press **Call**.
 
-`npm run start:stdio` starts the same server over stdio instead, which some desktop clients prefer.
-
-## Test it in the official basic-host
-
-In a second terminal, from a clone of [ext-apps](https://github.com/modelcontextprotocol/ext-apps):
-
-```bash
-cd examples/basic-host
-npm run start
-```
-
-The host defaults to `http://localhost:3001/mcp`. To point it at a different URL:
-
-```bash
-SERVERS='["http://localhost:3001/mcp"]' npm run start
-```
-
-Open **http://localhost:8080**. Pick the `hello` tool, optionally type a name, and call it. You should see the greeting and time in the sandboxed view.
-
-`examples/basic-host` uses `bun` to serve (`npm run start` runs `bun --watch serve.ts`). If bun is not installed, build the host and serve it with tsx instead:
-
-```bash
-npm run build
-npx tsx serve.ts
-```
+`npm run start:stdio` starts only the MCP server over stdio, which some desktop clients prefer.
 
 ## What each file does
 
@@ -49,6 +24,8 @@ npx tsx serve.ts
 | `view.html` | The page shell that loads the element. |
 | `vite.config.ts` | Bundles the view into one file, `dist/view.html`, with `vite-plugin-singlefile`. That is what the resource returns. |
 | `package.json` / `tsconfig.json` | Scripts, dependencies, and Lit decorator settings. |
+
+The host that draws the view lives in [`../host`](../host), not in this folder. Later posts start that same host. Post 3 explains how it works.
 
 ## Suggested reading order
 
