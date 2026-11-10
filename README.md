@@ -4,7 +4,7 @@ The code files for the MCP-Apps Series of posts on AdvancedFrontends.com.
 
 A hands-on series for [advancedfrontends.com](https://www.advancedfrontends.com). Each post is a small, complete example in its own folder. The goal is to understand MCP Apps well enough to bring one to the site, starting as small as possible.
 
-You will need Node 20+ and npm. These examples use the official [`@modelcontextprotocol/ext-apps`](https://github.com/modelcontextprotocol/ext-apps) SDK. Test each post with the official `examples/basic-host` from that repo — this series does not ship a host of its own until post 3.
+You will need Node 20+ and npm. These examples use the official [`@modelcontextprotocol/ext-apps`](https://github.com/modelcontextprotocol/ext-apps) SDK. The shared test host in [`host/`](./host) is a slimmed-down [`examples/basic-host`](https://github.com/modelcontextprotocol/ext-apps/tree/main/examples/basic-host) from that repo (MIT OR Apache-2.0). Every post reuses it, so one `npm start` builds the view and the host and runs them together.
 
 ## Planned posts
 
@@ -16,4 +16,11 @@ You will need Node 20+ and npm. These examples use the official [`@modelcontextp
 
 ## How to use this repo
 
-Start with post 1. Follow its README, then read the files in the order it suggests. Later posts will land in the folders above as the series is written.
+```bash
+git clone https://github.com/mdownes/mcp-apps-series.git
+cd mcp-apps-series/post-1-hello
+npm install
+npm start
+```
+
+Open **http://localhost:8080**. The terminal prints that URL when the host is up. The host calls `hello` and shows the greeting in a sandboxed view. Later posts reuse the same `host/` folder: install and start them the same way. Follow the post's README, then read the files in the order it suggests.

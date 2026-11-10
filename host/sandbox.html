@@ -1,0 +1,18 @@
+<!doctype html>
+<!--
+  Outer sandbox iframe (port 8081). CSP arrives as an HTTP header from serve.ts.
+  Slimmed down from the official ext-apps basic-host (MIT OR Apache-2.0):
+  https://github.com/modelcontextprotocol/ext-apps/tree/main/examples/basic-host
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html, body { margin: 0; height: 100%; }
+      iframe { border: 0; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <script type="module" src="./sandbox.ts"></script>
+  </body>
+</html>

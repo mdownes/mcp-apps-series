@@ -1,7 +1,7 @@
 /**
  * MCP server with one tool and one ui:// resource.
- *   npm run build && npm start          -> http://localhost:3001/mcp
- *   npm run start:stdio                 -> stdio (for local desktop clients)
+ *   npm start            -> this server plus the shared test host
+ *   npm run start:stdio  -> stdio only (for local desktop clients)
  */
 import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { McpServer } from "@modelcontextprotocol/server";

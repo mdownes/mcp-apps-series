@@ -1,0 +1,33 @@
+<!doctype html>
+<!--
+  Host page. Slimmed down from the official ext-apps basic-host (MIT OR Apache-2.0):
+  https://github.com/modelcontextprotocol/ext-apps/tree/main/examples/basic-host
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>MCP Apps test host</title>
+    <style>
+      body { font: 14px/1.4 system-ui; margin: 24px; max-width: 760px; }
+      label { display: block; margin: 8px 0; }
+      input[type="url"], input[type="text"], select { width: 100%; box-sizing: border-box; }
+      .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+      iframe { width: 100%; height: 420px; border: 1px solid #ccc; border-radius: 8px; }
+      button { font: inherit; }
+    </style>
+  </head>
+  <body>
+    <h1>MCP Apps test host</h1>
+    <label>MCP server <input id="mcp" type="url" /></label>
+    <div class="row">
+      <button id="connect" type="button">Connect</button>
+      <label><input id="dark" type="checkbox" /> dark theme</label>
+    </div>
+    <label>Tool <select id="tool"></select></label>
+    <label>Arguments (JSON) <input id="args" type="text" value="{}" spellcheck="false" /></label>
+    <div class="row"><button id="call" type="button">Call</button></div>
+    <p id="status">Connecting…</p>
+    <iframe id="app" title="MCP App view" referrerpolicy="origin"></iframe>
+    <script type="module" src="./host.ts"></script>
+  </body>
+</html>
