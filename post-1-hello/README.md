@@ -1,6 +1,6 @@
 # Post 1 — Hello MCP App
 
-The smallest MCP App that works: one tool (`hello`), one `ui://` resource, and a Lit view that renders `structuredContent`.
+The smallest MCP App that works: one tool (`hello`), one `ui://` resource, and a view that renders `structuredContent`.
 
 ## Run it
 
@@ -20,10 +20,10 @@ Open **http://localhost:8080**. `npm install` also installs the shared test host
 | File | Role |
 |---|---|
 | `server.ts` | The **MCP server**. `registerAppTool` defines `hello` and points `_meta.ui.resourceUri` at the view. The callback returns `content` (text for the model) and `structuredContent` (`{ greeting, time }` for the view). `registerAppResource` serves the built HTML at `ui://hello/view.html`. Listens on Streamable HTTP, or stdio with `--stdio`. |
-| `view.ts` | The **view**: a Lit element. `ontoolresult` is registered **before** `app.connect()`, then stores `structuredContent` in `@state() data` so the greeting and time render. |
+| `view.ts` | The **view**: a native custom element. `ontoolresult` is registered **before** `app.connect()`, then stores `structuredContent` and renders the greeting and time. |
 | `view.html` | The page shell that loads the element. |
 | `vite.config.ts` | Bundles the view into one file, `dist/view.html`, with `vite-plugin-singlefile`. That is what the resource returns. |
-| `package.json` / `tsconfig.json` | Scripts, dependencies, and Lit decorator settings. |
+| `package.json` / `tsconfig.json` | Scripts, dependencies, and TypeScript settings. |
 
 The host that draws the view lives in [`../host`](../host), not in this folder. Later posts start that same host. Post 3 explains how it works.
 
