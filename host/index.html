@@ -14,6 +14,18 @@
       .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
       iframe { width: 100%; height: 420px; border: 1px solid #ccc; border-radius: 8px; }
       button { font: inherit; }
+      /* Post 3 only. Hidden unless the page is opened with ?log=1. */
+      #traffic { margin-top: 16px; }
+      #traffic h2 { font-size: 16px; margin: 0 0 4px; }
+      #traffic p { margin: 0 0 8px; opacity: 0.75; }
+      #log {
+        font: 12px/1.45 ui-monospace, monospace;
+        background: #f4f4f4;
+        padding: 8px 10px;
+        border-radius: 8px;
+        white-space: pre-wrap;
+        margin: 0;
+      }
     </style>
   </head>
   <body>
@@ -28,6 +40,12 @@
     <div class="row"><button id="call" type="button">Call</button></div>
     <p id="status">Connecting…</p>
     <iframe id="app" title="MCP App view" referrerpolicy="origin"></iframe>
+    <!-- Post 3 opt-in. host.ts unhides this when the URL has ?log=1. -->
+    <section id="traffic" hidden>
+      <h2>AppBridge traffic</h2>
+      <p>postMessage between this page, the sandbox proxy, and the view.</p>
+      <pre id="log"></pre>
+    </section>
     <script type="module" src="./host.ts"></script>
   </body>
 </html>

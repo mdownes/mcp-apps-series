@@ -11,5 +11,6 @@ This is a slimmed-down version of the official [`examples/basic-host`](https://g
 - On load, calls `hello` if that tool has a view. Otherwise it calls the first tool that has one.
 - Reads the tool's `ui://` resource and renders that HTML in a sandboxed iframe. `serve.ts` builds the Content-Security-Policy header from the resource's `_meta.ui.csp`.
 - Grants `serverTools` and `openLinks` so a view can call a tool and open a link. Turn one off with `?serverTools=0` or `?openLinks=0`. The check is in `host.ts`.
+- With `?log=1`, lists AppBridge `postMessage` traffic under the view. Without that flag the panel stays hidden, so posts 1 and 2 look the same. Post 3 uses the flag.
 
 To run the host on its own after a post has installed it: `npm run build && npm start` in this folder. The terminal prints the URL to open.

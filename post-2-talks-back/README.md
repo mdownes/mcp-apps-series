@@ -31,7 +31,7 @@ Open **http://localhost:8080**. `npm start` builds this view and the shared host
 | `view.ts` | The **view**: a native custom element. `ontoolresult` is registered before `connect()`. After connect it reads host capabilities and disables buttons the host did not grant. |
 | `view.html` | The page shell. Vite inlines it into `dist/view.html`. |
 
-The host that draws the view lives in [`../host`](../host). Post 3 explains the sandbox and AppBridge.
+The host that draws the view lives in [`../host`](../host). [Post 3](../post-3-inside-the-host) explains the sandbox and AppBridge.
 
 ## Suggested reading order
 
