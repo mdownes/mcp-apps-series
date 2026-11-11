@@ -8,7 +8,8 @@ This is a slimmed-down version of the official [`examples/basic-host`](https://g
 
 - Connects to an MCP server. The default is `http://localhost:3001/mcp`. Change the URL on the page, or open `http://localhost:8080/?server=http://localhost:3001/mcp`.
 - Lists the server's tools. Pick one, edit the JSON arguments if you need to, and press **Call**.
-- If the server has a `hello` tool, the host calls it once on load.
+- On load, calls `hello` if that tool has a view. Otherwise it calls the first tool that has one.
 - Reads the tool's `ui://` resource and renders that HTML in a sandboxed iframe. `serve.ts` builds the Content-Security-Policy header from the resource's `_meta.ui.csp`.
+- Grants `serverTools` and `openLinks` so a view can call a tool and open a link. Turn one off with `?serverTools=0` or `?openLinks=0`. The check is in `host.ts`.
 
 To run the host on its own after a post has installed it: `npm run build && npm start` in this folder. The terminal prints the URL to open.

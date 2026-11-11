@@ -53,7 +53,10 @@ async function connect() {
       return option;
     }),
   );
-  if (tools.some((tool) => tool.name === "hello")) toolSelect.value = "hello";
+  // Post 1's tool is named hello. Later posts use another name; open the first tool that has a view.
+  const preferred = tools.find((tool) => tool.name === "hello" && getToolUiResourceUri(tool))
+    ?? tools.find((tool) => getToolUiResourceUri(tool));
+  if (preferred) toolSelect.value = preferred.name;
   statusEl.textContent = tools.length ? `Connected. ${tools.length} tool(s).` : "Connected. No tools.";
 }
 
@@ -97,14 +100,31 @@ async function callSelected() {
   await ready;
 
   // AppBridge is the host side of the JSON-RPC channel. It forwards tools/call to `client`.
+  // Capabilities are the security gate: the view can only do what we list here.
+  // Try http://localhost:8080/?serverTools=0 or ?openLinks=0, then press Call.
   const caps = client.getServerCapabilities();
+  const query = new URLSearchParams(location.search);
+  const hostCapabilities = {
+    ...(query.get("openLinks") === "0" ? {} : { openLinks: {} }),
+    ...(query.get("serverTools") === "0" || !caps?.tools ? {} : { serverTools: caps.tools }),
+  };
+  console.log("[host] capabilities", {
+    serverTools: Boolean(hostCapabilities.serverTools),
+    openLinks: Boolean(hostCapabilities.openLinks),
+  });
   bridge = new AppBridge(
     client,
     { name: "mcp-apps-test-host", version: "0.1.0" },
-    { openLinks: {}, serverTools: caps?.tools },
+    hostCapabilities,
     { hostContext: { theme: theme(), platform: "web", displayMode: "inline" } },
   );
-  bridge.onopenlink = async ({ url }) => (window.open(url, "_blank", "noopener"), {});
+  if (hostCapabilities.openLinks) {
+    bridge.onopenlink = async ({ url }) => {
+      console.log("[host] openLink", url);
+      window.open(url, "_blank", "noopener");
+      return {};
+    };
+  }
   bridge.onmessage = async (params) => (console.log("[host] ui/message", params), {});
   dark.onchange = () => bridge?.sendHostContextChange({ theme: theme() });
   const initialized = new Promise<void>((resolve) => {
@@ -112,12 +132,31 @@ async function callSelected() {
   });
 
   await bridge.connect(new PostMessageTransport(iframe.contentWindow!, iframe.contentWindow!));
+  // connect() forwards tools/call whenever the server has tools. Take that
+  // away when this host did not grant serverTools.
+  if (hostCapabilities.serverTools) {
+    const forward = bridge.oncalltool;
+    bridge.oncalltool = async (params, extra) => {
+      console.log("[host] tools/call from the view", params.name);
+      return forward!(params, extra);
+    };
+  } else {
+    bridge.oncalltool = async () => {
+      throw new Error("This host has not granted serverTools.");
+    };
+  }
   await bridge.sendSandboxResourceReady({ html, csp });
   await initialized;
   bridge.sendToolInput({ arguments: args });
   bridge.sendToolResult(await resultPromise);
-  statusEl.textContent = `Sent "${name}" to the view.`;
+  const withheld = [
+    hostCapabilities.serverTools ? "" : "serverTools off",
+    hostCapabilities.openLinks ? "" : "openLinks off",
+  ].filter(Boolean);
+  statusEl.textContent = withheld.length
+    ? `Sent "${name}" to the view. ${withheld.join(", ")}.`
+    : `Sent "${name}" to the view.`;
 }
 
 await connect();
-if (toolSelect.value === "hello") await callSelected();
+if (getToolUiResourceUri(tools.find((tool) => tool.name === toolSelect.value) ?? {})) await callSelected();
