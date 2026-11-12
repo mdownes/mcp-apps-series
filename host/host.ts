@@ -3,7 +3,7 @@
 // Slimmed down from the official ext-apps basic-host (MIT OR Apache-2.0):
 // https://github.com/modelcontextprotocol/ext-apps/tree/main/examples/basic-host
 import { AppBridge, PostMessageTransport, getToolUiResourceUri } from "@modelcontextprotocol/ext-apps/app-bridge";
-import { Client, StreamableHTTPClientTransport, type CallToolResult, type Tool } from "@modelcontextprotocol/client";
+import { Client, StreamableHTTPClientTransport, type CallToolResult, type JSONRPCMessage, type Tool, type TransportSendOptions } from "@modelcontextprotocol/client";
 
 const DEFAULT_MCP_URL = "http://localhost:3001/mcp";
 
@@ -15,7 +15,16 @@ const iframe = document.querySelector<HTMLIFrameElement>("#app")!;
 const dark = document.querySelector<HTMLInputElement>("#dark")!;
 const theme = (): "dark" | "light" => (dark.checked ? "dark" : "light");
 
-mcpInput.value = new URLSearchParams(location.search).get("server") || DEFAULT_MCP_URL;
+const query = new URLSearchParams(location.search);
+mcpInput.value = query.get("server") || DEFAULT_MCP_URL;
+
+// Post 3 opt-in. ?log=1 lists AppBridge postMessage traffic on the page.
+// Without the flag the panel stays hidden, so posts 1 and 2 look the same.
+const logEnabled = query.get("log") === "1";
+const trafficEl = document.querySelector<HTMLElement>("#traffic");
+const logEl = document.querySelector<HTMLPreElement>("#log");
+const methodsById = new Map<string, string>();
+if (logEnabled && trafficEl) trafficEl.hidden = false;
 
 let client: Client | undefined;
 let tools: Tool[] = [];
@@ -95,6 +104,8 @@ async function callSelected() {
   });
 
   await bridge?.close().catch(() => {});
+  if (logEl) logEl.textContent = "";
+  methodsById.clear();
   iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms");
   iframe.src = `${sandboxUrl}?csp=${encodeURIComponent(JSON.stringify(csp ?? {}))}`;
   await ready;
@@ -103,7 +114,6 @@ async function callSelected() {
   // Capabilities are the security gate: the view can only do what we list here.
   // Try http://localhost:8080/?serverTools=0 or ?openLinks=0, then press Call.
   const caps = client.getServerCapabilities();
-  const query = new URLSearchParams(location.search);
   const hostCapabilities = {
     ...(query.get("openLinks") === "0" ? {} : { openLinks: {} }),
     ...(query.get("serverTools") === "0" || !caps?.tools ? {} : { serverTools: caps.tools }),
@@ -131,7 +141,11 @@ async function callSelected() {
     bridge!.oninitialized = () => resolve();
   });
 
-  await bridge.connect(new PostMessageTransport(iframe.contentWindow!, iframe.contentWindow!));
+  // ?log=1 wraps the transport so outgoing postMessage is listed too.
+  // The default path is the plain transport posts 1 and 2 already use.
+  const frame = iframe.contentWindow!;
+  const transport = logEnabled ? new LoggingTransport(frame, frame) : new PostMessageTransport(frame, frame);
+  await bridge.connect(transport);
   // connect() forwards tools/call whenever the server has tools. Take that
   // away when this host did not grant serverTools.
   if (hostCapabilities.serverTools) {
@@ -158,5 +172,62 @@ async function callSelected() {
     : `Sent "${name}" to the view.`;
 }
 
+// Same send() as PostMessageTransport, plus one line in the log panel.
+// Declared before the top-level await so ?log=1 can construct it during the first call.
+class LoggingTransport extends PostMessageTransport {
+  override async send(message: JSONRPCMessage, options?: TransportSendOptions): Promise<void> {
+    const method = "method" in message && typeof message.method === "string" ? message.method : undefined;
+    const direction = method?.startsWith("ui/notifications/sandbox-") ? "host -> sandbox" : "host -> view";
+    appendTraffic(direction, message);
+    return super.send(message, options);
+  }
+}
+
+// Incoming postMessage (sandbox -> host, and the view's messages after the
+// proxy relays them). Outgoing messages are recorded by LoggingTransport.
+if (logEnabled) {
+  window.addEventListener("message", (event) => {
+    if (event.source !== iframe.contentWindow || !isRpc(event.data)) return;
+    const method = typeof event.data.method === "string" ? event.data.method : undefined;
+    const direction = method?.startsWith("ui/notifications/sandbox-") ? "sandbox -> host" : "view -> host";
+    appendTraffic(direction, event.data);
+  });
+}
+
 await connect();
 if (getToolUiResourceUri(tools.find((tool) => tool.name === toolSelect.value) ?? {})) await callSelected();
+
+function isRpc(data: unknown): data is RpcMessage {
+  return !!data && typeof data === "object" && (data as { jsonrpc?: unknown }).jsonrpc === "2.0";
+}
+
+type RpcMessage = {
+  method?: unknown;
+  id?: unknown;
+  params?: unknown;
+  result?: unknown;
+  error?: unknown;
+};
+
+function appendTraffic(direction: string, message: RpcMessage) {
+  if (!logEnabled || !logEl) return;
+  logEl.textContent += `${direction}  ${describeTraffic(message)}\n`;
+}
+
+function describeTraffic(message: RpcMessage): string {
+  const method = typeof message.method === "string" ? message.method : undefined;
+  const id = message.id === undefined || message.id === null ? undefined : String(message.id);
+  if (method && id !== undefined) methodsById.set(id, method);
+  if (method === "ui/notifications/sandbox-resource-ready") {
+    const params = message.params;
+    const html = params && typeof params === "object" && "html" in params ? params.html : undefined;
+    const chars = typeof html === "string" ? html.length : 0;
+    return `${method} (html ${chars} chars)`;
+  }
+  if (method) return method;
+  if (id !== undefined && (message.result !== undefined || message.error !== undefined)) {
+    const called = methodsById.get(id);
+    return called ? `${called} result` : `result #${id}`;
+  }
+  return "message";
+}

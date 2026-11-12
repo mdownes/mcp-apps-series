@@ -25,7 +25,7 @@ Open **http://localhost:8080**. `npm install` also installs the shared test host
 | `vite.config.ts` | Bundles the view into one file, `dist/view.html`, with `vite-plugin-singlefile`. That is what the resource returns. |
 | `package.json` / `tsconfig.json` | Scripts, dependencies, and TypeScript settings. |
 
-The host that draws the view lives in [`../host`](../host), not in this folder. Later posts start that same host. Post 3 explains how it works.
+The host that draws the view lives in [`../host`](../host), not in this folder. Later posts start that same host. [Post 3](../post-3-inside-the-host) explains how it works.
 
 ## Suggested reading order
 
