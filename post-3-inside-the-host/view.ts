@@ -34,7 +34,7 @@ class InsideHost extends HTMLElement {
   private allowedResult = "Waiting for the tool result…";
   private blockedResult = "Waiting for the tool result…";
   private toolNote = "Waiting for the tool result…";
-  private fetchGen = 0;
+  private fetchGen = { allowed: 0, blocked: 0 };
   private app = new App({ name: "inside-the-host", version: "0.1.0" });
 
   constructor() {
@@ -42,8 +42,14 @@ class InsideHost extends HTMLElement {
     const root = this.attachShadow({ mode: "open" });
     root.addEventListener("click", (event) => {
       const id = (event.target as HTMLElement).id;
-      if (id === "open" || id === "navigate" || id === "read") this.runSandbox();
-      if (id === "allowed" || id === "blocked") void this.runFetches();
+      if (id === "open") this.openResult = tryOpen();
+      else if (id === "navigate") this.navResult = tryNavigate();
+      else if (id === "read") this.readResult = tryReadHost();
+      else if (id === "allowed" || id === "blocked") {
+        void this.runFetch(id);
+        return;
+      } else return;
+      this.render();
     });
     this.render();
   }
@@ -63,7 +69,7 @@ class InsideHost extends HTMLElement {
       this.data = data;
       this.toolNote = "Tool result received, via ontoolresult.";
       this.render();
-      void this.runFetches();
+      this.runFetches();
     };
     void this.app.connect().catch((err: unknown) => {
       this.toolNote = err instanceof Error ? err.message : String(err);
@@ -107,21 +113,22 @@ class InsideHost extends HTMLElement {
     this.render();
   }
 
-  private async runFetches() {
+  private runFetches() {
+    void this.runFetch("allowed");
+    void this.runFetch("blocked");
+  }
+
+  private async runFetch(which: "allowed" | "blocked") {
     if (!this.data) return;
-    const gen = ++this.fetchGen;
-    const allowedUrl = this.data.allowedUrl;
-    const blockedUrl = this.data.blockedUrl;
-    this.allowedResult = "Fetching…";
-    this.blockedResult = "Fetching…";
+    const url = which === "allowed" ? this.data.allowedUrl : this.data.blockedUrl;
+    const gen = ++this.fetchGen[which];
+    if (which === "allowed") this.allowedResult = "Fetching…";
+    else this.blockedResult = "Fetching…";
     this.render();
-    const [allowed, blocked] = await Promise.all([
-      probeFetch(allowedUrl),
-      probeFetch(blockedUrl),
-    ]);
-    if (gen !== this.fetchGen) return;
-    this.allowedResult = allowed;
-    this.blockedResult = blocked;
+    const result = await probeFetch(url);
+    if (gen !== this.fetchGen[which]) return;
+    if (which === "allowed") this.allowedResult = result;
+    else this.blockedResult = result;
     this.render();
   }
 
@@ -232,10 +239,13 @@ function tryOpen(): string {
 
 function tryNavigate(): string {
   try {
-    window.top!.location.assign("https://example.org/mcp-apps-sandbox-test");
+    // location.assign() is not this check. Chrome refuses to read assign on a
+    // cross-origin Location even when allow-top-navigation is set, and the host
+    // does not navigate. Setting href is the navigation that flag gates.
+    window.top!.location.href = "https://example.org/mcp-apps-sandbox-test";
     return "Not blocked. The view set window.top.location.";
   } catch (err) {
-    return expectSecurityError(err, "No allow-top-navigation, so the view cannot navigate the host.");
+    return expectSecurityError(err, /navigate/, "No allow-top-navigation, so the view cannot navigate the host.");
   }
 }
 
@@ -244,14 +254,14 @@ function tryReadHost(): string {
     const title = window.top!.document.title;
     return `Not blocked. Host title is "${title}".`;
   } catch (err) {
-    return expectSecurityError(err, "The host page is a different origin, so the view cannot read it.");
+    return expectSecurityError(err, /cross-origin/, "The host page is a different origin, so the view cannot read it.");
   }
 }
 
-function expectSecurityError(err: unknown, why: string): string {
+function expectSecurityError(err: unknown, pattern: RegExp, why: string): string {
   const name = err instanceof Error ? err.name : "Error";
-  if (name === "SecurityError") return `Blocked (SecurityError). ${why}`;
   const message = err instanceof Error ? err.message : String(err);
+  if (name === "SecurityError" && pattern.test(message)) return `Blocked (SecurityError). ${why}`;
   return `Unexpected ${name}: ${message}`;
 }
 
