@@ -28,11 +28,11 @@ class InsideHost extends HTMLElement {
   private sandboxAttr = "…";
   private connectSrc = "Reading the CSP header…";
   private imgSrc = "…";
-  private openResult = "Checking…";
-  private navResult = "Checking…";
-  private readResult = "Checking…";
-  private allowedResult = "Waiting for the tool result…";
-  private blockedResult = "Waiting for the tool result…";
+  private openResult = "Click to try.";
+  private navResult = "Click to try.";
+  private readResult = "Click to try.";
+  private allowedResult = "Click to try.";
+  private blockedResult = "Click to try.";
   private toolNote = "Waiting for the tool result…";
   private fetchGen = { allowed: 0, blocked: 0 };
   private app = new App({ name: "inside-the-host", version: "0.1.0" });
@@ -56,9 +56,10 @@ class InsideHost extends HTMLElement {
 
   connectedCallback() {
     this.readFrame();
-    this.runSandbox();
+    this.render();
     void this.readCspHeader();
     // Register BEFORE connect() so a fast host cannot deliver the result first.
+    // The tool result only stores the URLs. A fetch waits for its own button.
     this.app.ontoolresult = (result) => {
       const data = result.structuredContent;
       if (!isData(data)) {
@@ -69,7 +70,6 @@ class InsideHost extends HTMLElement {
       this.data = data;
       this.toolNote = "Tool result received, via ontoolresult.";
       this.render();
-      this.runFetches();
     };
     void this.app.connect().catch((err: unknown) => {
       this.toolNote = err instanceof Error ? err.message : String(err);
@@ -91,13 +91,6 @@ class InsideHost extends HTMLElement {
     }
   }
 
-  private runSandbox() {
-    this.openResult = tryOpen();
-    this.navResult = tryNavigate();
-    this.readResult = tryReadHost();
-    this.render();
-  }
-
   private async readCspHeader() {
     try {
       // Same origin as the proxy, so we can fetch sandbox.html and read the
@@ -113,13 +106,14 @@ class InsideHost extends HTMLElement {
     this.render();
   }
 
-  private runFetches() {
-    void this.runFetch("allowed");
-    void this.runFetch("blocked");
-  }
-
   private async runFetch(which: "allowed" | "blocked") {
-    if (!this.data) return;
+    if (!this.data) {
+      const waiting = "Waiting for the tool result…";
+      if (which === "allowed") this.allowedResult = waiting;
+      else this.blockedResult = waiting;
+      this.render();
+      return;
+    }
     const url = which === "allowed" ? this.data.allowedUrl : this.data.blockedUrl;
     const gen = ++this.fetchGen[which];
     if (which === "allowed") this.allowedResult = "Fetching…";
