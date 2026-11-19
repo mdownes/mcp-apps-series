@@ -2,7 +2,14 @@
 //
 // Slimmed down from the official ext-apps basic-host (MIT OR Apache-2.0):
 // https://github.com/modelcontextprotocol/ext-apps/tree/main/examples/basic-host
-import { AppBridge, PostMessageTransport, getToolUiResourceUri } from "@modelcontextprotocol/ext-apps/app-bridge";
+import {
+  AppBridge,
+  PostMessageTransport,
+  getToolUiResourceUri,
+  type McpUiDisplayMode,
+  type McpUiHostContext,
+  type McpUiStyles,
+} from "@modelcontextprotocol/ext-apps/app-bridge";
 import { Client, StreamableHTTPClientTransport, type CallToolResult, type JSONRPCMessage, type Tool, type TransportSendOptions } from "@modelcontextprotocol/client";
 
 const DEFAULT_MCP_URL = "http://localhost:3001/mcp";
@@ -13,10 +20,14 @@ const argsInput = document.querySelector<HTMLInputElement>("#args")!;
 const statusEl = document.querySelector<HTMLElement>("#status")!;
 const iframe = document.querySelector<HTMLIFrameElement>("#app")!;
 const dark = document.querySelector<HTMLInputElement>("#dark")!;
+const displaySelect = document.querySelector<HTMLSelectElement>("#display")!;
+const localeSelect = document.querySelector<HTMLSelectElement>("#locale")!;
+const containerSelect = document.querySelector<HTMLSelectElement>("#container")!;
 const theme = (): "dark" | "light" => (dark.checked ? "dark" : "light");
 
 const query = new URLSearchParams(location.search);
 mcpInput.value = query.get("server") || DEFAULT_MCP_URL;
+if (query.get("theme") === "dark") dark.checked = true;
 
 // Post 3 opt-in. ?log=1 lists AppBridge postMessage traffic on the page.
 // Without the flag the panel stays hidden, so posts 1 and 2 look the same.
@@ -32,10 +43,85 @@ let bridge: AppBridge | undefined;
 
 document.querySelector("#connect")!.addEventListener("click", () => connect().catch(showError));
 document.querySelector("#call")!.addEventListener("click", () => callSelected().catch(showError));
+// Post 4. Posts 1–3 never read the notification these send.
+dark.addEventListener("change", publishContext);
+displaySelect.addEventListener("change", publishContext);
+localeSelect.addEventListener("change", publishContext);
+containerSelect.addEventListener("change", () => {
+  applyContainerFrame();
+  publishContext();
+});
 
 function showError(err: unknown) {
   statusEl.textContent = err instanceof Error ? err.message : String(err);
   console.error(err);
+}
+
+// The spec type lists every variable. A host may send any subset.
+// Colors use light-dark(), so a theme change does not send them again.
+// The view's own fallbacks are neutral gray; these are warm, so you can see which set is on screen.
+const HOST_STYLE_VARIABLES = {
+  "--color-background-primary": "light-dark(#f4efe4, #1c1915)",
+  "--color-background-secondary": "light-dark(#fffdf8, #2a241c)",
+  "--color-background-info": "light-dark(#efe2c9, #3d3426)",
+  "--color-text-primary": "light-dark(#3f2e1e, #f6efe4)",
+  "--color-text-secondary": "light-dark(#7a6552, #cbbba6)",
+  "--color-border-primary": "light-dark(#e0d3c2, #4a3f32)",
+  "--font-sans": "system-ui, sans-serif",
+  "--font-mono": "ui-monospace, monospace",
+  "--border-radius-md": "8px",
+  "--border-radius-lg": "12px",
+} as McpUiStyles;
+
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+function displayMode(): McpUiDisplayMode {
+  const value = displaySelect.value;
+  if (value === "fullscreen" || value === "pip") return value;
+  return "inline";
+}
+
+function containerDimensions(): McpUiHostContext["containerDimensions"] {
+  // full is flexible on both axes. narrow is fixed. short fixes the height only.
+  // The numbers stay stable so a theme toggle does not also look like a resize.
+  if (containerSelect.value === "narrow") return { width: 340, height: 420 };
+  if (containerSelect.value === "short") return { maxWidth: 720, height: 240 };
+  return { maxWidth: 720, maxHeight: 420 };
+}
+
+function applyContainerFrame() {
+  if (containerSelect.value === "narrow") {
+    iframe.style.width = "340px";
+    iframe.style.height = "420px";
+    return;
+  }
+  if (containerSelect.value === "short") {
+    iframe.style.width = "";
+    iframe.style.height = "240px";
+    return;
+  }
+  iframe.style.width = "";
+  iframe.style.height = "";
+}
+
+function hostContext(): McpUiHostContext {
+  return {
+    theme: theme(),
+    platform: "web",
+    displayMode: displayMode(),
+    availableDisplayModes: ["inline", "fullscreen", "pip"],
+    locale: localeSelect.value,
+    timeZone,
+    containerDimensions: containerDimensions(),
+    styles: { variables: HOST_STYLE_VARIABLES },
+  };
+}
+
+function publishContext() {
+  // Pass the whole context. setHostContext replaces the stored copy and
+  // notifies the view with only the fields that differ. A patch such as
+  // { theme: "dark" } would drop styles, locale, and the rest.
+  bridge?.setHostContext(hostContext());
 }
 
 function readArgs(): Record<string, unknown> {
@@ -126,7 +212,7 @@ async function callSelected() {
     client,
     { name: "mcp-apps-test-host", version: "0.1.0" },
     hostCapabilities,
-    { hostContext: { theme: theme(), platform: "web", displayMode: "inline" } },
+    { hostContext: hostContext() },
   );
   if (hostCapabilities.openLinks) {
     bridge.onopenlink = async ({ url }) => {
@@ -136,7 +222,6 @@ async function callSelected() {
     };
   }
   bridge.onmessage = async (params) => (console.log("[host] ui/message", params), {});
-  dark.onchange = () => bridge?.sendHostContextChange({ theme: theme() });
   const initialized = new Promise<void>((resolve) => {
     bridge!.oninitialized = () => resolve();
   });

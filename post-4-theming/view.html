@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- Until the host context arrives, follow the browser. applyDocumentTheme then pins light or dark. -->
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      html, body { margin: 0; height: 100%; }
+      /* Same fallbacks as the view. Used when the host sends no style variables. */
+      body {
+        background: var(--color-background-primary, light-dark(#ffffff, #1a1a1a));
+        color: var(--color-text-primary, light-dark(#18181b, #fafafa));
+      }
+    </style>
+  </head>
+  <body>
+    <host-context></host-context>
+    <script type="module" src="./view.ts"></script>
+  </body>
+</html>
