@@ -13,7 +13,11 @@
       input[type="url"], input[type="text"], select { width: 100%; box-sizing: border-box; }
       .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
       iframe { width: 100%; height: 420px; border: 1px solid #ccc; border-radius: 8px; }
-      button { font: inherit; }
+      button, select { font: inherit; }
+      /* Post 4. The tool select stays full width; these do not. */
+      .context { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 8px 0; }
+      .context label { display: flex; gap: 6px; align-items: center; margin: 0; }
+      .context select { width: auto; }
       /* Post 3 only. Hidden unless the page is opened with ?log=1. */
       #traffic { margin-top: 16px; }
       #traffic h2 { font-size: 16px; margin: 0 0 4px; }
@@ -34,6 +38,30 @@
     <div class="row">
       <button id="connect" type="button">Connect</button>
       <label><input id="dark" type="checkbox" /> dark theme</label>
+    </div>
+    <!-- Post 4. Posts 1–3 ignore host-context-changed, so these controls change nothing they render. -->
+    <div class="context">
+      <label>Display
+        <select id="display">
+          <option value="inline">inline</option>
+          <option value="fullscreen">fullscreen</option>
+          <option value="pip">pip</option>
+        </select>
+      </label>
+      <label>Locale
+        <select id="locale">
+          <option value="en-US">en-US</option>
+          <option value="fr-FR">fr-FR</option>
+          <option value="ja-JP">ja-JP</option>
+        </select>
+      </label>
+      <label>Container
+        <select id="container">
+          <option value="full">full</option>
+          <option value="narrow">narrow</option>
+          <option value="short">short</option>
+        </select>
+      </label>
     </div>
     <label>Tool <select id="tool"></select></label>
     <label>Arguments (JSON) <input id="args" type="text" value="{}" spellcheck="false" /></label>
